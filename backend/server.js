@@ -6,6 +6,7 @@ const cors = require("cors");
 const connectDB = require("./src/config/db");
 const healthRoutes = require("./src/routes/health.routes");
 const authRoutes = require("./src/routes/auth.routes");
+const eventRoutes = require("./src/routes/event.routes");
 const notFound = require("./src/middleware/notFound");
 const errorHandler = require("./src/middleware/errorHandler");
 
@@ -17,6 +18,7 @@ app.use(express.json());
 
 app.use("/api/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/events", eventRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
