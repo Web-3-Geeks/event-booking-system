@@ -63,7 +63,7 @@ Note: Full concurrent/race-condition stress testing is NOT part of Day 2 — tha
 - [x] Task 7: Booking Cancellation
 - [x] Task 8: Rollback Handling (compensating action, not full DB transaction — see note below)
 - [x] Task 9: Validation & Error Handling
-- [ ] Task 10: API Testing (Postman)
+- [x] Task 10: API Testing (Postman)
 
 **Design note:** Task 8 uses a compensating-action pattern (manually reversing the seat update if booking creation fails) rather than a full MongoDB multi-document session transaction. This keeps the same seats atomically correct under concurrent requests; a true session transaction is a possible future improvement once we introduce heavier concurrency testing later this week.
 
@@ -174,7 +174,7 @@ How to use:
 3. Run Login to save token automatically
 4. Use Collection Runner to run all tests
 
-Day 2 (booking endpoints) testing is pending — collection will be updated once tested against the live Railway deployment.
+Collection covers Auth, Events, and Bookings (including all 6 required Day 2 test cases: successful booking, insufficient seats, invalid quantity, cancellation, double cancellation, unauthorized booking access), tested against the live Railway deployment.
 
 API test screenshots are in docs/screenshots/.
 
