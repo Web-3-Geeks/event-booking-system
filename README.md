@@ -26,15 +26,46 @@ Note: Concurrency-safe booking logic is NOT part of Day 1 — that comes later t
 
 ---
 
-## Status
+## Status (Day 1)
 
-- [ ] Task 1: Project Setup
-- [ ] Task 2: Authentication
-- [ ] Task 3: Event Model
-- [ ] Task 4: Event APIs
-- [ ] Task 5: Authorization
-- [ ] Task 6: Validation & Errors
-- [ ] Task 7: Docs & Testing
+- [x] Task 1: Project Setup
+- [x] Task 2: Authentication
+- [x] Task 3: Event Model
+- [x] Task 4: Event APIs
+- [x] Task 5: Authorization
+- [x] Task 6: Validation & Errors
+- [x] Task 7: Docs & Testing
+
+---
+
+## Day 2 Plan — Booking System, Reservations & Atomic Seat Management
+
+1. Booking/Reservation model — userId, eventId, quantity, totalAmount, status, timestamps.
+2. Create booking API — `POST /api/bookings`, authenticated users only.
+3. Atomic seat deduction — conditional update (`availableSeats >= quantity`) so concurrent requests can't overbook.
+4. Overbooking protection — reject when requested quantity exceeds available seats (`409 Conflict`).
+5. Backend price calculation — `totalAmount = event.price * quantity`, never trusts client-provided amount.
+6. Booking retrieval — `GET /api/bookings` (own bookings), `GET /api/bookings/:id` (owner-only, `403` otherwise).
+7. Booking cancellation — `PATCH /api/bookings/:id/cancel`, restores seats, blocks double-cancellation via conditional update.
+8. Rollback handling — if booking creation fails after seat deduction, seats are restored (compensating action).
+9. Validation & error handling — all required error cases (missing/invalid quantity, cancelled/ended event, unauthorized access, already-cancelled booking, invalid IDs).
+
+Note: Full concurrent/race-condition stress testing is NOT part of Day 2 — that comes later this week.
+
+## Status (Day 2)
+
+- [x] Task 1: Booking Model
+- [x] Task 2: Create Booking API
+- [x] Task 3: Atomic Seat Update
+- [x] Task 4: Overbooking Protection
+- [x] Task 5: Backend Price Calculation
+- [x] Task 6: Booking Retrieval APIs
+- [x] Task 7: Booking Cancellation
+- [x] Task 8: Rollback Handling (compensating action, not full DB transaction — see note below)
+- [x] Task 9: Validation & Error Handling
+- [ ] Task 10: API Testing (Postman)
+
+**Design note:** Task 8 uses a compensating-action pattern (manually reversing the seat update if booking creation fails) rather than a full MongoDB multi-document session transaction. This keeps the same seats atomically correct under concurrent requests; a true session transaction is a possible future improvement once we introduce heavier concurrency testing later this week.
 
 ---
 
@@ -69,10 +100,12 @@ backend/
     models/         # Mongoose schemas
     routes/         # API routes
     utils/          # Helpers (JWT, error classes)
-  docs/
-    postman/        # Postman collection + environments
-    screenshots/    # API test screenshots
   server.js
+
+docs/
+  postman_collection.json
+  postman_environment_railway.json
+  screenshots/      # API test screenshots
 
 ---
 
@@ -95,6 +128,15 @@ Events
 | POST | /api/events | Yes | ADMIN | Create event |
 | PATCH | /api/events/:id | Yes | ADMIN | Update event |
 | DELETE | /api/events/:id | Yes | ADMIN | Delete event |
+
+Bookings
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | /api/bookings | Yes | Create a booking (atomic seat deduction) |
+| GET | /api/bookings | Yes | List current user's own bookings |
+| GET | /api/bookings/:id | Yes | Get own booking by ID (403 if not owner) |
+| PATCH | /api/bookings/:id/cancel | Yes | Cancel own booking, restores seats |
 
 Health
 
@@ -121,17 +163,18 @@ Roles
 
 ## Testing & Docs
 
-Postman collection and environments are available in docs/postman/:
+Postman collection and environment are available in docs/:
 
 - postman_collection.json
-- postman_environment_local.json
 - postman_environment_railway.json
 
 How to use:
-1. Import the collection and both environments into Postman
-2. Select environment (Local or Railway)
+1. Import the collection and the environment into Postman
+2. Select the Railway environment
 3. Run Login to save token automatically
 4. Use Collection Runner to run all tests
+
+Day 2 (booking endpoints) testing is pending — collection will be updated once tested against the live Railway deployment.
 
 API test screenshots are in docs/screenshots/.
 

@@ -12,10 +12,10 @@ const {
 
 const router = express.Router();
 
-router.post("/", protect, createEvent);
+router.post("/", protect, adminOnly, createEvent);
 router.get("/", protect, getEvents);
 router.get("/:id", protect, getEventById);
-router.put("/:id", protect, adminOnly, updateEvent);
+router.patch("/:id", protect, adminOnly, updateEvent);
 router.delete("/:id", protect, adminOnly, deleteEvent);
 
 module.exports = router;

@@ -16,6 +16,16 @@ function errorHandler(err, req, res, next) {
     details = Object.values(err.errors).map((e) => e.message);
   }
 
+  if (err.name === "JsonWebTokenError") {
+    statusCode = 401;
+    message = "Invalid token";
+  }
+
+  if (err.name === "TokenExpiredError") {
+    statusCode = 401;
+    message = "Token expired, please login again";
+  }
+
   if (err.code === 11000) {
     statusCode = 409;
     const field = Object.keys(err.keyValue || {})[0];
