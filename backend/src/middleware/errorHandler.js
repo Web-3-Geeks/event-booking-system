@@ -1,8 +1,9 @@
 const ApiError = require("../utils/ApiError");
 
 function errorHandler(err, req, res, next) {
+  console.error(err);
   let statusCode = err instanceof ApiError ? err.statusCode : 500;
-  let message = err.message || "Internal Server Error";
+  let message = statusCode === 500 ? "Something went wrong, please try again" : err.message;
   let details = err instanceof ApiError ? err.details : null;
 
   if (err.name === "CastError") {
