@@ -69,6 +69,47 @@ Note: Full concurrent/race-condition stress testing is NOT part of Day 2 — tha
 
 ---
 
+## Day 3 Plan — Concurrent Booking, Race Conditions & Concurrency Control
+
+1. Document the booking race condition and how the Day 2 atomic conditional update (`availableSeats >= quantity` + `$inc`) prevents it — see `docs/CONCURRENCY-NOTES.md`.
+2. Build a configurable concurrent-booking load test script (`backend/scripts/concurrentBookingTest.js`) — fires N parallel booking requests and reports totals, successes, failures, average response time, plus a before/after seat-consistency check.
+3. Run it at all 3 required concurrency levels: 10 seats/20 requests, 50 seats/100 requests, 100 seats/500 requests — plus a mixed-quantity scenario (4+3+5+2 requests against 10 seats).
+4. Harden concurrency error handling — unexpected failures now return a generic message + `500` instead of leaking internal error details (JWT/DB errors were already mapped to proper codes from Day 2).
+5. Add an automated test suite (`backend/tests/`) covering: normal booking, overbooking rejection, 20-concurrent-request race (max 10 succeed), simulated transaction failure + rollback, and final `availableSeats + bookedSeats = totalSeats` consistency.
+
+Note: Full production-hardening and advanced booking scenarios are Day 4; final validation is Day 5.
+
+## Status (Day 3)
+
+- [x] Task 1: Race Condition Documented (`docs/CONCURRENCY-NOTES.md`)
+- [x] Task 2: Concurrency-Safe Seat Reservation (verified, built on Day 2's atomic update)
+- [x] Task 3: Transaction-Safe Booking Creation (verified, built on Day 2's rollback)
+- [x] Task 4: Overbooking Protection (verified under real concurrent load)
+- [x] Task 5: High-Demand / Mixed-Quantity Test
+- [x] Task 6: Concurrent Booking Test Script (`backend/scripts/concurrentBookingTest.js`)
+- [x] Task 7: Multiple Concurrency Levels (10/20, 50/100, 100/500 — all passed)
+- [x] Task 8: Database Consistency Checks
+- [x] Task 9: Concurrency Error Handling
+- [x] Task 10: Automated Tests (5 tests, `node --test`)
+
+**Design note:** Automated tests use Node's built-in test runner (`node:test`) rather than Jest — Jest's sandboxed test environment was found to reliably break the MongoDB driver's connection handshake in this setup (confirmed as a Jest-environment issue, not a code/driver bug, via isolated reproduction). `node:test` + `node:assert` + `supertest` + `mongodb-memory-server` give the same capability with zero extra dependency and no compatibility issue. See Notes.md for the full debugging trail.
+
+### Running the concurrency load test
+
+```bash
+cd backend
+TEST_EVENT_ID=<event_id> TEST_TOKEN=<jwt> TEST_CONCURRENT=20 TEST_SEATS=1 node scripts/concurrentBookingTest.js
+```
+
+### Running the automated test suite
+
+```bash
+cd backend
+npm test
+```
+
+---
+
 ## Local Setup
 
 git clone https://github.com/web-3-Geeks/event-booking-system.git
@@ -100,9 +141,16 @@ backend/
     models/         # Mongoose schemas
     routes/         # API routes
     utils/          # Helpers (JWT, error classes)
+    app.js          # Express app config only (no DB connect / listen) — used by server.js and tests
+  scripts/
+    concurrentBookingTest.js  # Configurable concurrent-load test tool
+  tests/
+    testDb.js       # In-memory MongoDB helper for tests
+    booking.test.js # Automated tests (node:test)
   server.js
 
 docs/
+  CONCURRENCY-NOTES.md
   postman_collection.json
   postman_environment_railway.json
   screenshots/      # API test screenshots
