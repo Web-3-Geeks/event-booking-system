@@ -28,7 +28,12 @@ const eventSchema = new mongoose.Schema(
       type: Number,
       required: [true, "Total seats is required"],
       min: [1, "Total seats must be greater than 0"],
+      validate: {
+        validator: Number.isInteger,
+        message: "totalSeats must be an integer",
+      },
     },
+
     availableSeats: {
       type: Number,
       required: true,
@@ -52,5 +57,9 @@ const eventSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+eventSchema.index({ status: 1 });
+eventSchema.index({ startDate: 1 });
+eventSchema.index({ location: 1 });
 
 module.exports = mongoose.model("Event", eventSchema);

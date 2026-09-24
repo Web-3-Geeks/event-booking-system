@@ -1,14 +1,15 @@
 const mongoose = require("mongoose");
-const { MongoMemoryServer } = require("mongodb-memory-server");
+const { MongoMemoryReplSet } = require("mongodb-memory-server");
 
-let mongoServer;
+let replSet;
 
 async function connect() {
-  mongoServer = await MongoMemoryServer.create({
+  replSet = await MongoMemoryReplSet.create({
+    replSet: { count: 1 },
     binary: { version: "7.0.14" },
   });
 
-  const uri = mongoServer.getUri();
+  const uri = replSet.getUri();
   await mongoose.connect(uri);
 }
 
@@ -22,7 +23,7 @@ async function clearDatabase() {
 async function closeDatabase() {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
-  await mongoServer.stop();
+  await replSet.stop();
 }
 
 module.exports = { connect, clearDatabase, closeDatabase };

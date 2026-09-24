@@ -110,6 +110,48 @@ npm test
 
 ---
 
+## Day 4 Plan — Reliability, Idempotency & Advanced Booking Scenarios
+
+1. Idempotent booking requests — `Idempotency-Key` header on `POST /api/bookings`; duplicate requests (same key) return the original result instead of creating a second booking, even under real concurrency.
+2. `IdempotencyRecord` model — unique index on `(userId, idempotencyKey)` (used as a race-safe lock), TTL index on `expiresAt` for automatic cleanup, stores a request hash to reject key reuse with different data.
+3. Concurrent duplicate request testing — verified with 20 truly concurrent requests sharing one key.
+4. Safe concurrent cancellation — verified Day 2's atomic conditional cancel under 10 concurrent requests on the same booking.
+5. Booking & Event state-transition rules — `src/utils/stateTransitions.js`; explicit allowed transitions (e.g. booking `CONFIRMED → CANCELLED` only, event `UPCOMING → ONGOING → COMPLETED`), enforced regardless of client input.
+6. **Real MongoDB transactions** — replaced the Day 2/3 manual compensating-rollback pattern with `mongoose.startSession()` + `session.withTransaction()` in both `createBooking` and `cancelBooking`. No more hand-rolled "undo" code; MongoDB itself guarantees all-or-nothing.
+7. Database indexes & constraints on Booking (`userId+createdAt`, `eventId`, `status`) and Event (`status`, `startDate`, `location`); integer validators on `quantity`/`totalSeats`.
+8. Query optimization — `deleteEvent` now blocks deletion when the event has active (CONFIRMED) bookings instead of orphaning them.
+9. Pagination & filtering — `GET /api/events?page=&limit=&status=&location=&startDate=&endDate=`, `GET /api/bookings?page=&limit=&status=` (bookings always scoped server-side to the authenticated user).
+10. Booking activity logging — structured JSON logs (`src/utils/logger.js`) at all required points (request received, seat reservation attempted, booking created/rejected/cancelled, transaction rolled back, idempotency conflict, concurrency conflict). No passwords/tokens ever logged.
+11. Final reliability test pass — re-ran the week's concurrency scenarios with Day 4's exact numbers; results recorded below.
+
+## Status (Day 4)
+
+- [x] Task 1: Idempotent Booking Requests
+- [x] Task 2: Idempotency Database Record
+- [x] Task 3: Concurrent Duplicate Request Testing
+- [x] Task 4: Safe Concurrent Cancellation
+- [x] Task 5: Booking State Transition Rules
+- [x] Task 6: Real MongoDB Transactions (replaces manual rollback)
+- [x] Task 7: Database Indexes & Constraints
+- [x] Task 8: Optimized Booking & Event Queries
+- [x] Task 9: Pagination & Filtering
+- [x] Task 10: Booking Activity Logging
+- [x] Task 11: Final Reliability Tests
+
+**Design note:** MongoDB transactions require a replica set. Atlas shared-tier clusters already are replica sets, so this needed no infra change in production — but the local test DB (`mongodb-memory-server`) had to switch from `MongoMemoryServer` (standalone) to `MongoMemoryReplSet` (`replSet: { count: 1 }`) in `tests/testDb.js` for the automated tests to keep passing with transaction-based code.
+
+### Final Reliability Test Results (Task 11)
+
+| Test | Config | Result |
+|---|---|---|
+| Concurrent Booking | 10 seats, 50 concurrent requests, 1 seat/req | 10 successful, 40 failed, `availableSeats=0`, consistency holds |
+| Duplicate Idempotency Request | 5 seats, 20 concurrent requests, same key, qty 2 | Exactly 1 Booking created, `availableSeats=3` (deducted once) |
+| Concurrent Cancellation | 1 booking (qty 4), 20 concurrent cancel requests | Exactly 1 successful cancel, seats restored +4 (once) |
+| Transaction Failure | `Booking.create` mocked to fail mid-transaction | No booking created, seats restored (automated test) |
+| Data Consistency | Checked across all events above | `availableSeats >= 0`, `<= totalSeats`, `+ bookedSeats = totalSeats` — all true |
+
+---
+
 ## Local Setup
 
 git clone https://github.com/web-3-Geeks/event-booking-system.git
@@ -138,14 +180,14 @@ backend/
     config/         # DB connection, env config
     controllers/    # Route handlers
     middleware/     # Auth, error handling, validation
-    models/         # Mongoose schemas
+    models/         # Mongoose schemas (User, Event, Booking, IdempotencyRecord)
     routes/         # API routes
-    utils/          # Helpers (JWT, error classes)
+    utils/          # Helpers (JWT, error classes, logger, state transitions)
     app.js          # Express app config only (no DB connect / listen) — used by server.js and tests
   scripts/
     concurrentBookingTest.js  # Configurable concurrent-load test tool
   tests/
-    testDb.js       # In-memory MongoDB helper for tests
+    testDb.js       # In-memory MongoDB replica set helper for tests (transactions need a replica set)
     booking.test.js # Automated tests (node:test)
   server.js
 
@@ -171,20 +213,20 @@ Events
 
 | Method | Endpoint | Auth | Role | Description |
 |--------|----------|------|------|-------------|
-| GET | /api/events | Yes | Any | List all events |
+| GET | /api/events?page=&limit=&status=&location=&startDate=&endDate= | Yes | Any | List events (paginated, filterable) |
 | GET | /api/events/:id | Yes | Any | Get event by ID |
 | POST | /api/events | Yes | ADMIN | Create event |
-| PATCH | /api/events/:id | Yes | ADMIN | Update event |
-| DELETE | /api/events/:id | Yes | ADMIN | Delete event |
+| PATCH | /api/events/:id | Yes | ADMIN | Update event (status changes validated against allowed transitions) |
+| DELETE | /api/events/:id | Yes | ADMIN | Delete event (blocked if it has active bookings) |
 
 Bookings
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | /api/bookings | Yes | Create a booking (atomic seat deduction) |
-| GET | /api/bookings | Yes | List current user's own bookings |
+| POST | /api/bookings | Yes | Create a booking (transaction-safe seat deduction; optional `Idempotency-Key` header for safe retries) |
+| GET | /api/bookings?page=&limit=&status= | Yes | List current user's own bookings (paginated, filterable) |
 | GET | /api/bookings/:id | Yes | Get own booking by ID (403 if not owner) |
-| PATCH | /api/bookings/:id/cancel | Yes | Cancel own booking, restores seats |
+| PATCH | /api/bookings/:id/cancel | Yes | Cancel own booking, restores seats (transaction-safe; blocked once the event has started) |
 
 Health
 

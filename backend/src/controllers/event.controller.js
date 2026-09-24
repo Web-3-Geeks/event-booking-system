@@ -2,6 +2,8 @@ const Event = require("../models/Event");
 const asyncHandler = require("../utils/asyncHandler");
 const ApiError = require("../utils/ApiError");
 const { sendSuccess } = require("../utils/apiResponse");
+const { canTransitionEvent } = require("../utils/stateTransitions");
+const Booking = require("../models/Booking");
 
 const createEvent = asyncHandler(async (req, res) => {
   const {
@@ -57,10 +59,42 @@ const createEvent = asyncHandler(async (req, res) => {
 });
 
 const getEvents = asyncHandler(async (req, res) => {
-  const events = await Event.find();
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+  const skip = (page - 1) * limit;
 
-  sendSuccess(res, 200, "Events fetched successfully", { events });
+  const filter = {};
+
+  if (req.query.status) {
+    filter.status = req.query.status;
+  }
+
+  if (req.query.location) {
+    filter.location = req.query.location;
+  }
+
+  if (req.query.startDate || req.query.endDate) {
+    filter.startDate = {};
+    if (req.query.startDate) filter.startDate.$gte = new Date(req.query.startDate);
+    if (req.query.endDate) filter.startDate.$lte = new Date(req.query.endDate);
+  }
+
+  const [events, total] = await Promise.all([
+    Event.find(filter).sort({ startDate: 1 }).skip(skip).limit(limit),
+    Event.countDocuments(filter),
+  ]);
+
+  sendSuccess(res, 200, "Events fetched successfully", {
+    events,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 });
+
 
 const getEventById = asyncHandler(async (req, res) => {
   const event = await Event.findById(req.params.id);
@@ -126,7 +160,15 @@ const updateEvent = asyncHandler(async (req, res) => {
   if (startDate !== undefined) event.startDate = startDate;
   if (endDate !== undefined) event.endDate = endDate;
   if (price !== undefined) event.price = price;
-  if (status !== undefined) event.status = status;
+  if (status !== undefined) {
+    if (!canTransitionEvent(event.status, status)) {
+      throw new ApiError(
+        400,
+        `Cannot change event status from ${event.status} to ${status}`,
+      );
+    }
+    event.status = status;
+  }
 
   await event.save();
 
@@ -140,10 +182,23 @@ const deleteEvent = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Event not found");
   }
 
+  const hasBookings = await Booking.exists({
+    eventId: event._id,
+    status: "CONFIRMED",
+  });
+
+  if (hasBookings) {
+    throw new ApiError(
+      409,
+      "Cannot delete an event with active bookings. Cancel the event instead."
+    );
+  }
+
   await event.deleteOne();
 
   sendSuccess(res, 200, "Event deleted successfully");
 });
+
 
 module.exports = {
   createEvent,
