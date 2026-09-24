@@ -92,7 +92,7 @@ Note: Full production-hardening and advanced booking scenarios are Day 4; final 
 - [x] Task 9: Concurrency Error Handling
 - [x] Task 10: Automated Tests (5 tests, `node --test`)
 
-**Design note:** Automated tests use Node's built-in test runner (`node:test`) rather than Jest — Jest's sandboxed test environment was found to reliably break the MongoDB driver's connection handshake in this setup (confirmed as a Jest-environment issue, not a code/driver bug, via isolated reproduction). `node:test` + `node:assert` + `supertest` + `mongodb-memory-server` give the same capability with zero extra dependency and no compatibility issue. See Notes.md for the full debugging trail.
+**Design note:** Automated tests use Node's built-in test runner (`node:test`) rather than Jest — Jest's sandboxed test environment was found to reliably break the MongoDB driver's connection handshake in this setup (confirmed as a Jest-environment issue, not a code/driver bug, via isolated reproduction). `node:test` + `node:assert` + `supertest` + `mongodb-memory-server` give the same capability with zero extra dependency and no compatibility issue.
 
 ### Running the concurrency load test
 
