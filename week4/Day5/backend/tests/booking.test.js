@@ -39,8 +39,8 @@ async function createAdminAndEvent(totalSeats) {
         title: "Test Event",
         description: "desc",
         location: "loc",
-        startDate: "2026-12-01T18:00:00.000Z",
-        endDate: "2026-12-01T22:00:00.000Z",
+        startDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
         totalSeats,
         price: 100
      });

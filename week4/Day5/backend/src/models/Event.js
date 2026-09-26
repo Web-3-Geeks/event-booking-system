@@ -38,6 +38,12 @@ const eventSchema = new mongoose.Schema(
       type: Number,
       required: true,
       min: 0,
+      validate: {
+        validator: function (value) {
+          return value <= this.totalSeats;
+        },
+        message: "availableSeats cannot exceed totalSeats",
+      },
     },
     price: {
       type: Number,

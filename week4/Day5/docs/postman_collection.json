@@ -40,7 +40,19 @@
             },
             "description": "Public. Creates a new user (always role=USER). Password is hashed before storage and never returned in the response."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Duplicate email Register",
@@ -72,7 +84,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Login",
@@ -148,7 +172,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Me",
@@ -172,7 +208,19 @@
             },
             "description": "Protected — requires Authorization: Bearer <token>. Returns the current user profile (no password)."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Me without Token",
@@ -190,7 +238,19 @@
               ]
             }
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Register Other User (for authorization test)",
@@ -267,7 +327,19 @@
             },
             "description": "Protected. Supports pagination and filtering: ?page=1&limit=20&status=UPCOMING&location=Lahore&startDate=2026-01-01&endDate=2026-12-31"
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create Event",
@@ -303,7 +375,19 @@
             },
             "description": "Protected, ADMIN only (403 for USER). availableSeats is always set equal to totalSeats server-side."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Event By ID",
@@ -327,7 +411,19 @@
             },
             "description": "Protected. 404 if the event does not exist."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Update Event",
@@ -364,7 +460,19 @@
             },
             "description": "Protected, ADMIN only. Partial update (PATCH) — only sent fields change. Status changes are validated against allowed transitions (e.g. UPCOMING can go to ONGOING or CANCELLED, but not directly to COMPLETED). totalSeats changes preserve already-booked seats atomically."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Delete Event",
@@ -388,7 +496,19 @@
             },
             "description": "Protected, ADMIN only. Blocked with 409 if the event has any CONFIRMED bookings — cancel the event instead."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Events (Paginated + Filtered)",
@@ -425,7 +545,19 @@
             },
             "description": "Example of pagination + filtering. Also supports location and startDate/endDate range filters. Response includes a pagination object: { page, limit, total, totalPages }."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -466,7 +598,19 @@
             },
             "description": "Protected. Seat deduction + booking creation run inside a MongoDB transaction (all-or-nothing). Optional Idempotency-Key header — see the Idempotency folder for behavior details. totalAmount is always calculated server-side (price x quantity), never trusted from the client."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "OverBookings",
@@ -502,7 +646,19 @@
             },
             "description": "Demonstrates the 409 Conflict response when requested quantity exceeds availableSeats. No seats are deducted on failure."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Invalid Quantity",
@@ -538,7 +694,19 @@
             },
             "description": "Demonstrates 400 Bad Request for quantity <= 0 or non-integer quantity."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "All Bookings",
@@ -561,7 +729,19 @@
             },
             "description": "Protected. Always scoped server-side to the authenticated user (req.user._id) — a user can never see another user's bookings, regardless of query params. Supports ?page=1&limit=20&status=CONFIRMED."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Cancel Booking",
@@ -586,7 +766,19 @@
             },
             "description": "Protected. Status change + seat restoration run inside a MongoDB transaction. Blocked (400) once the event's startDate has passed. Only the booking owner can cancel."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Booking By ID",
@@ -610,7 +802,19 @@
             },
             "description": "Protected. 403 if the booking belongs to another user, 404 if it does not exist."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Unauthorized Booking Access",
@@ -634,7 +838,19 @@
             },
             "description": "Demonstrates 403 when a different authenticated user tries to view a booking they do not own."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Double Cancellation",
@@ -659,7 +875,19 @@
             },
             "description": "Demonstrates that cancelling an already-CANCELLED booking is safely rejected (400) and does not restore seats a second time — verified this also holds under true concurrent load (see docs/CONCURRENCY-NOTES.md)."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Bookings (Paginated + Filtered)",
@@ -696,7 +924,19 @@
             },
             "description": "Example of pagination + filtering, always scoped to the authenticated user. Response includes a pagination object: { page, limit, total, totalPages }."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -741,7 +981,19 @@
             },
             "description": "Booking request with a unique Idempotency-Key header. A fresh key always creates a new booking (201)."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Duplicate Idempotency Request (Same Data)",
@@ -781,7 +1033,19 @@
             },
             "description": "Run this request TWICE (or more) in a row with the same fixed key and same body. Only one Booking document is ever created — every repeat returns the SAME booking id and 201, even if fired concurrently (verified with 20 truly concurrent requests, see Notes.md / README)."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 201\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Idempotency Key Reused with Different Data",
@@ -821,7 +1085,19 @@
             },
             "description": "Run this AFTER the request above, using the SAME key (demo-fixed-key) but a DIFFERENT quantity. Expected: 422 \"Idempotency key already used for a different request\" — the key is tied to the exact original request via a hash, so it cannot be reused for a different booking."
           },
-          "response": []
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"Response has success field\", () => pm.expect(pm.response.json()).to.have.property(\"success\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

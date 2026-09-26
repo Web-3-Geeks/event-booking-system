@@ -139,40 +139,50 @@ const updateEvent = asyncHandler(async (req, res) => {
     throw new ApiError(400, "End date must be after start date");
   }
 
-  if (totalSeats !== undefined) {
-    const bookedSeats = event.totalSeats - event.availableSeats;
-    const newAvailableSeats = totalSeats - bookedSeats;
+  if (status !== undefined && !canTransitionEvent(event.status, status)) {
+    throw new ApiError(
+      400,
+      `Cannot change event status from ${event.status} to ${status}`,
+    );
+  }
 
-    if (newAvailableSeats < 0) {
+  const setFields = {};
+  if (title !== undefined) setFields.title = title;
+  if (description !== undefined) setFields.description = description;
+  if (location !== undefined) setFields.location = location;
+  if (startDate !== undefined) setFields.startDate = startDate;
+  if (endDate !== undefined) setFields.endDate = endDate;
+  if (price !== undefined) setFields.price = price;
+  if (status !== undefined) setFields.status = status;
+
+  let updatedEvent;
+
+  if (totalSeats !== undefined) {
+    const delta = totalSeats - event.totalSeats;
+
+    updatedEvent = await Event.findOneAndUpdate(
+      { _id: event._id, availableSeats: { $gte: -delta } },
+      { $inc: { totalSeats: delta, availableSeats: delta }, $set: setFields },
+      { new: true, runValidators: true },
+    );
+
+    if (!updatedEvent) {
       throw new ApiError(
         400,
         "totalSeats cannot be less than already booked seats",
       );
     }
-
-    event.totalSeats = totalSeats;
-    event.availableSeats = newAvailableSeats;
+  } else if (Object.keys(setFields).length > 0) {
+    updatedEvent = await Event.findByIdAndUpdate(
+      event._id,
+      { $set: setFields },
+      { new: true, runValidators: true },
+    );
+  } else {
+    updatedEvent = event;
   }
 
-  if (title !== undefined) event.title = title;
-  if (description !== undefined) event.description = description;
-  if (location !== undefined) event.location = location;
-  if (startDate !== undefined) event.startDate = startDate;
-  if (endDate !== undefined) event.endDate = endDate;
-  if (price !== undefined) event.price = price;
-  if (status !== undefined) {
-    if (!canTransitionEvent(event.status, status)) {
-      throw new ApiError(
-        400,
-        `Cannot change event status from ${event.status} to ${status}`,
-      );
-    }
-    event.status = status;
-  }
-
-  await event.save();
-
-  sendSuccess(res, 200, "Event updated successfully", { event });
+  sendSuccess(res, 200, "Event updated successfully", { event: updatedEvent });
 });
 
 const deleteEvent = asyncHandler(async (req, res) => {
