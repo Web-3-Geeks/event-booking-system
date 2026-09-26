@@ -49,12 +49,20 @@ async function runTest() {
   const successful = results.filter((r) => r.success);
   const failed = results.filter((r) => !r.success);
   const avgMs = results.reduce((sum, r) => sum + r.ms, 0) / results.length;
+  const maxMs = Math.max(...results.map((r) => r.ms));
+
+  const statusBreakdown = {};
+  for (const r of results) {
+    statusBreakdown[r.status] = (statusBreakdown[r.status] || 0) + 1;
+  }
 
   console.log("--- Results ---");
   console.log(`Total requests: ${results.length}`);
   console.log(`Successful: ${successful.length}`);
   console.log(`Failed: ${failed.length}`);
+  console.log(`Status breakdown: ${JSON.stringify(statusBreakdown)}`);
   console.log(`Average response time: ${avgMs.toFixed(1)}ms`);
+  console.log(`Maximum response time: ${maxMs}ms`);
   console.log(`Total wall time: ${totalTime}ms`);
 
   return { successful, failed };

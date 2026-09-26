@@ -7,7 +7,7 @@ async function connectDB() {
         throw new Error("MONGO_URI is not set in .env");
     }
 
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, { maxPoolSize: 200 });
     console.log("MongoDB connected");
 }
 

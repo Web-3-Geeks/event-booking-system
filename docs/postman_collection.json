@@ -37,7 +37,8 @@
                 "auth",
                 "register"
               ]
-            }
+            },
+            "description": "Public. Creates a new user (always role=USER). Password is hashed before storage and never returned in the response."
           },
           "response": []
         },
@@ -112,7 +113,8 @@
                 "auth",
                 "login"
               ]
-            }
+            },
+            "description": "Public. Returns a JWT (valid for JWT_EXPIRES_IN). Same error for wrong email or wrong password (prevents user enumeration)."
           },
           "response": []
         },
@@ -167,7 +169,8 @@
                 "auth",
                 "me"
               ]
-            }
+            },
+            "description": "Protected — requires Authorization: Bearer <token>. Returns the current user profile (no password)."
           },
           "response": []
         },
@@ -261,7 +264,8 @@
               "path": [
                 "events"
               ]
-            }
+            },
+            "description": "Protected. Supports pagination and filtering: ?page=1&limit=20&status=UPCOMING&location=Lahore&startDate=2026-01-01&endDate=2026-12-31"
           },
           "response": []
         },
@@ -296,7 +300,8 @@
               "path": [
                 "events"
               ]
-            }
+            },
+            "description": "Protected, ADMIN only (403 for USER). availableSeats is always set equal to totalSeats server-side."
           },
           "response": []
         },
@@ -319,7 +324,8 @@
                 "events",
                 "{{eventId}}"
               ]
-            }
+            },
+            "description": "Protected. 404 if the event does not exist."
           },
           "response": []
         },
@@ -355,7 +361,8 @@
                 "events",
                 "{{eventId}}"
               ]
-            }
+            },
+            "description": "Protected, ADMIN only. Partial update (PATCH) — only sent fields change. Status changes are validated against allowed transitions (e.g. UPCOMING can go to ONGOING or CANCELLED, but not directly to COMPLETED). totalSeats changes preserve already-booked seats atomically."
           },
           "response": []
         },
@@ -378,7 +385,45 @@
                 "events",
                 "{{eventId}}"
               ]
-            }
+            },
+            "description": "Protected, ADMIN only. Blocked with 409 if the event has any CONFIRMED bookings — cancel the event instead."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Events (Paginated + Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events?page=1&limit=10&status=UPCOMING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "UPCOMING"
+                }
+              ]
+            },
+            "description": "Example of pagination + filtering. Also supports location and startDate/endDate range filters. Response includes a pagination object: { page, limit, total, totalPages }."
           },
           "response": []
         }
@@ -418,7 +463,8 @@
               "path": [
                 "bookings"
               ]
-            }
+            },
+            "description": "Protected. Seat deduction + booking creation run inside a MongoDB transaction (all-or-nothing). Optional Idempotency-Key header — see the Idempotency folder for behavior details. totalAmount is always calculated server-side (price x quantity), never trusted from the client."
           },
           "response": []
         },
@@ -453,7 +499,8 @@
               "path": [
                 "bookings"
               ]
-            }
+            },
+            "description": "Demonstrates the 409 Conflict response when requested quantity exceeds availableSeats. No seats are deducted on failure."
           },
           "response": []
         },
@@ -488,7 +535,8 @@
               "path": [
                 "bookings"
               ]
-            }
+            },
+            "description": "Demonstrates 400 Bad Request for quantity <= 0 or non-integer quantity."
           },
           "response": []
         },
@@ -510,7 +558,8 @@
               "path": [
                 "bookings"
               ]
-            }
+            },
+            "description": "Protected. Always scoped server-side to the authenticated user (req.user._id) — a user can never see another user's bookings, regardless of query params. Supports ?page=1&limit=20&status=CONFIRMED."
           },
           "response": []
         },
@@ -534,7 +583,8 @@
                 "6ab2f0cfcbf3e0ce4daddcd9",
                 "cancel"
               ]
-            }
+            },
+            "description": "Protected. Status change + seat restoration run inside a MongoDB transaction. Blocked (400) once the event's startDate has passed. Only the booking owner can cancel."
           },
           "response": []
         },
@@ -557,7 +607,8 @@
                 "bookings",
                 "6ab2f0cfcbf3e0ce4daddcd9"
               ]
-            }
+            },
+            "description": "Protected. 403 if the booking belongs to another user, 404 if it does not exist."
           },
           "response": []
         },
@@ -580,7 +631,8 @@
                 "bookings",
                 "6ab2f0cfcbf3e0ce4daddcd9"
               ]
-            }
+            },
+            "description": "Demonstrates 403 when a different authenticated user tries to view a booking they do not own."
           },
           "response": []
         },
@@ -604,7 +656,170 @@
                 "6ab2f0cfcbf3e0ce4daddcd9",
                 "cancel"
               ]
-            }
+            },
+            "description": "Demonstrates that cancelling an already-CANCELLED booking is safely rejected (400) and does not restore seats a second time — verified this also holds under true concurrent load (see docs/CONCURRENCY-NOTES.md)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bookings (Paginated + Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings?page=1&limit=10&status=CONFIRMED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "CONFIRMED"
+                }
+              ]
+            },
+            "description": "Example of pagination + filtering, always scoped to the authenticated user. Response includes a pagination object: { page, limit, total, totalPages }."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Idempotency",
+      "item": [
+        {
+          "name": "Create Booking with Idempotency Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-key-{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Booking request with a unique Idempotency-Key header. A fresh key always creates a new booking (201)."
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Idempotency Request (Same Data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-fixed-key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Run this request TWICE (or more) in a row with the same fixed key and same body. Only one Booking document is ever created — every repeat returns the SAME booking id and 201, even if fired concurrently (verified with 20 truly concurrent requests, see Notes.md / README)."
+          },
+          "response": []
+        },
+        {
+          "name": "Idempotency Key Reused with Different Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-fixed-key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Run this AFTER the request above, using the SAME key (demo-fixed-key) but a DIFFERENT quantity. Expected: 422 \"Idempotency key already used for a different request\" — the key is tied to the exact original request via a hash, so it cannot be reused for a different booking."
           },
           "response": []
         }

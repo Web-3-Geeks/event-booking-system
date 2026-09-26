@@ -1,8 +1,64 @@
 # Event Booking System — Backend
 
-Week 4 project: backend that handles event browsing & seat booking, with safe concurrency handling (later days). Built incrementally, day by day.
+A backend API for browsing events and reserving seats, built specifically to demonstrate that the same seat can never be sold twice — even when many users try to book it at the exact same moment. Built incrementally over Week 4, day by day, with each day's work layered on top of the last.
 
-Stack: Node.js + Express + MongoDB (Mongoose) + JWT + bcryptjs.
+## Project Overview
+
+Users register, log in, browse upcoming events, and reserve seats. Admins create and manage events. On the surface this is a standard CRUD API, but the actual engineering problem the project solves is concurrency: when N users simultaneously try to book the last few seats of an event, the system must guarantee that at most `availableSeats` bookings succeed — never more, never fewer than necessary, and never in a way that corrupts the database if something fails mid-operation. Retried or duplicated requests (e.g. a user double-clicking "Book" or a flaky network causing a client to resend) must not create duplicate bookings either.
+
+## Technology Stack
+
+| Concern | Choice |
+|---|---|
+| Backend framework | Node.js + Express |
+| Database | MongoDB (Atlas, shared/free tier — a replica set, which is required for transactions) via Mongoose |
+| Authentication | JWT (`jsonwebtoken`), passwords hashed with `bcryptjs` |
+| Testing | Node's built-in test runner (`node:test` + `node:assert`), `supertest` for HTTP-level tests, `mongodb-memory-server` (as a replica set) for an isolated test database |
+| Concurrency approach | MongoDB multi-document transactions (`session.withTransaction()`) for seat reservation + booking creation, and for cancellation + seat restoration; a unique-index-based locking pattern for idempotency |
+| Deployment | Railway (backend), MongoDB Atlas (database) |
+
+## Architecture
+
+```
+server.js            → loads env, connects DB, starts listening
+  src/app.js          → Express app: middleware + routes (imported directly by tests, no DB/listen)
+    routes/           → maps URLs to controllers, attaches auth/admin middleware
+      controllers/     → business logic (validation, transactions, responses)
+        models/         → Mongoose schemas: User, Event, Booking, IdempotencyRecord
+    middleware/        → auth (JWT verify), admin-only guard, centralized error handler, 404 handler
+    utils/              → ApiError, asyncHandler, response formatter, logger, state-transition rules
+```
+
+Request flow for a booking: `routes/booking.routes.js` → `auth.middleware.js` (verifies JWT, attaches `req.user`) → `booking.controller.js` (validates input, checks idempotency key, runs the seat-reservation + booking-creation transaction) → consistent JSON response via `sendSuccess()`/the centralized error handler. Every controller is wrapped in `asyncHandler` so thrown errors always reach the centralized error handler instead of crashing the process.
+
+## Booking Concurrency
+
+**The race condition.** If seat booking were three separate steps — read `availableSeats`, check it in application code, then write the decreased value back — two concurrent requests could both read the same "before" value, both pass the check, and both succeed, deducting more seats than actually existed. See `docs/CONCURRENCY-NOTES.md` for the full worked example.
+
+**How it's prevented.** Seat reservation is a single atomic MongoDB operation — `Event.findOneAndUpdate({ _id, availableSeats: { $gte: quantity } }, { $inc: { availableSeats: -quantity } })` — so the check-and-decrement happens as one indivisible step the database itself serializes across concurrent requests. Whichever request reaches MongoDB first "wins"; every later request re-evaluates the condition against the already-updated value.
+
+**Transactions.** That atomic update only protects the seat count in isolation. To also guarantee that seat deduction and booking creation succeed or fail together (so a crash between the two writes can never leave seats deducted with no booking, or vice versa), both operations run inside a real MongoDB session transaction (`mongoose.startSession()` + `session.withTransaction()`) in `createBooking`, and equivalently for `cancelBooking` (status change + seat restoration). This replaced an earlier compensating-rollback approach (manually "undoing" the seat change in a catch block) that worked for ordinary failures but could permanently lose seats if the server crashed at exactly the wrong moment.
+
+**Overbooking prevention.** A direct consequence of the atomic conditional update: if `availableSeats < quantity`, the update matches no document, `findOneAndUpdate` returns `null`, and the controller responds `409 Conflict` — no seats are touched. This has been verified at concurrency levels from 20 up to 500 simultaneous requests (see Testing below).
+
+**Idempotency.** Clients may send an `Idempotency-Key` header with a booking request. The first request with a given key atomically inserts an `IdempotencyRecord` (the `{userId, idempotencyKey}` unique index acts as a race-safe lock — concurrent duplicates hit a duplicate-key error and know someone else is already processing that exact request), does the real booking, then marks the record `COMPLETED` with the response saved. Any later request with the same key either replays that saved response (if the original request used identical data) or is rejected with `422` (if the data differs) — so retries are always safe, and a key can never be reused for a different booking.
+
+## Testing
+
+- **Unit/integration**: `backend/tests/booking.test.js`, run via `npm test` — 5 automated tests against an in-memory MongoDB replica set (`mongodb-memory-server`, required for transactions), covering normal booking, overbooking rejection, a 20-concurrent-request race, a simulated mid-transaction failure with rollback (via `node:test`'s `mock.method`), and the `availableSeats + bookedSeats = totalSeats` consistency invariant.
+- **Concurrency load testing**: `backend/scripts/concurrentBookingTest.js`, a configurable script (event ID, concurrent request count, seats per request, auth token via env vars) that fires real HTTP requests in parallel against a running server and reports successes/failures/status-code breakdown/response times, then verifies the event's final state.
+- **Manual/exploratory**: the Postman collection in `docs/` (see Testing & Docs below), and repeated curl-based end-to-end and edge-case sweeps.
+
+Sample results (data correctness held at every scale tested; see Notes.md for the full week-by-week detail):
+
+| Scenario | Result |
+|---|---|
+| 10 seats, 20 concurrent requests | Exactly 10 succeed, 0 seats left, consistency holds |
+| 100 seats, 500 concurrent requests | No overbooking, no negative seats, invariant holds (throughput degrades under this level of single-document contention — see Notes.md's Day 5 performance report for the honest trade-off discussion) |
+| 5 seats, 20 concurrent requests sharing one idempotency key | Exactly 1 booking created |
+| 1 booking, 20 concurrent cancel requests | Exactly 1 cancellation succeeds, seats restored once |
+| Simulated transaction failure mid-booking | No orphan booking, seats correctly restored |
+| Full-database integrity audit (35 events, all bookings created across the week) | Zero violations: no negative/orphan/inconsistent records |
 
 ## Live Deployment
 
@@ -152,24 +208,104 @@ npm test
 
 ---
 
-## Local Setup
+## Day 5 Plan — Final Integration, Testing & Production Readiness
 
+1. End-to-end flow verification — the full user journey (register → login → view events → view details → book → view booking → cancel → verify restored) run as one chain.
+2. Final concurrency validation — 100 seats, 500 concurrent requests.
+3. Mixed concurrent operations — bookings, cancellations, and idempotent retries fired simultaneously against the same event.
+4. Final idempotency validation — same-key sequential, same-key concurrent, and same-key-different-data (rejected).
+5. Final cancellation validation — full lifecycle plus concurrent cancellation.
+6. Security & authorization review.
+7. Edge-case sweep across all documented event/booking error cases.
+8. Full-database integrity audit.
+9. Performance/load report, compared against Day 3/4 numbers.
+10. Finalized API documentation (Postman).
+11. Production readiness — `.env.example`, restricted CORS, debug-code check, build/start command verification.
+12. This README, rewritten as a complete standalone document.
+13. Final demonstration prep.
+
+## Status (Day 5)
+
+- [x] Task 1: End-to-End Booking Flow
+- [x] Task 2: Final Concurrency Validation (100 seats / 500 requests)
+- [x] Task 3: Mixed Concurrent Operations
+- [x] Task 4: Final Idempotency Validation
+- [x] Task 5: Final Cancellation Validation
+- [x] Task 6: Security & Authorization Review
+- [x] Task 7: API Error & Edge-Case Testing
+- [x] Task 8: Database Integrity Audit
+- [x] Task 9: Performance & Load Test Report
+- [x] Task 10: API Documentation
+- [x] Task 11: Production Readiness
+- [x] Task 12: Final README
+- [ ] Task 13: Final Project Demonstration
+
+**Honest finding (Task 2/9):** data correctness held at every concurrency level tested, including 500 simultaneous requests against 100 seats (no overbooking, no negative seats, the core invariant always true). However, raw throughput degrades sharply at that extreme scale under real MongoDB transactions — 500 truly-simultaneous requests hammering a single document causes heavy write-conflict contention, and `session.withTransaction()`'s retry loop exhausts itself for most losing requests on a free/shared-tier Atlas cluster (they fail with `500`, not a clean `409`). Day 3's pre-transaction atomic-update approach handled the same 500-request scenario in 14s with 100% of possible bookings succeeding; the transaction-based approach took 134s and completed only 20%. This is a genuine, expected trade-off — transactions buy the crash-safety that was the Day 2/3 reviews' top priority, at a throughput cost under hot-document contention that would need a dedicated (non-shared) cluster, or a queue-based booking design, to fully resolve at flash-sale scale. At moderate concurrency (20-50 requests, closer to realistic traffic) the cost is small (5-14s) and acceptable. Full numbers in Notes.md.
+
+---
+
+## Setup Instructions
+
+**1. Clone the repository**
+
+```bash
 git clone https://github.com/web-3-Geeks/event-booking-system.git
 cd event-booking-system/backend
+```
+
+**2. Install dependencies**
+
+```bash
 npm install
+```
 
-Create .env in the backend/ folder:
+**3. Configure environment variables**
 
+Copy `.env.example` to `.env` and fill in real values:
+
+```bash
+cp .env.example .env
+```
+
+```
 PORT=5000
-MONGO_URI=your_mongodb_uri
-JWT_SECRET=your_secret_key
+NODE_ENV=development
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/event-booking
+JWT_SECRET=change_this_to_a_long_random_secret
 JWT_EXPIRES_IN=7d
+CORS_ORIGIN=http://localhost:3000
+```
 
-Run the server:
+**4. Run the database**
 
-npm run dev
+No local database install needed — `MONGO_URI` points at a MongoDB Atlas cluster (a replica set, which transactions require). For local automated tests, `mongodb-memory-server` spins up an ephemeral in-memory replica set automatically — nothing to start manually.
+
+**5. Migrations / setup**
+
+None needed. MongoDB is schema-less at the database level; Mongoose creates collections and the indexes defined in each model (see `src/models/`) automatically the first time the app connects.
+
+**6. Start the server**
+
+```bash
+npm run dev    # development, auto-restarts on file changes (nodemon)
+npm start       # production
+```
 
 Health check: http://localhost:5000/api/health
+
+**7. Run tests**
+
+```bash
+npm test
+```
+
+Runs the automated suite (`backend/tests/booking.test.js`) against an isolated in-memory MongoDB replica set — no effect on your real database.
+
+To run a concurrency load test against a running server:
+
+```bash
+TEST_EVENT_ID=<event_id> TEST_TOKEN=<jwt> TEST_CONCURRENT=20 TEST_SEATS=1 node scripts/concurrentBookingTest.js
+```
 
 ---
 
@@ -264,7 +400,7 @@ How to use:
 3. Run Login to save token automatically
 4. Use Collection Runner to run all tests
 
-Collection covers Auth, Events, and Bookings (including all 6 required Day 2 test cases: successful booking, insufficient seats, invalid quantity, cancellation, double cancellation, unauthorized booking access), tested against the live Railway deployment.
+Collection covers Auth, Events, Bookings, and a dedicated Idempotency folder (fresh key, duplicate same-key request, and key-reused-with-different-data → 422), plus paginated/filtered examples for both Events and Bookings. Every request has a description covering auth requirements and behavior. Includes all 6 required Day 2 test cases (successful booking, insufficient seats, invalid quantity, cancellation, double cancellation, unauthorized booking access), tested against the live Railway deployment.
 
 API test screenshots are in docs/screenshots/.
 
