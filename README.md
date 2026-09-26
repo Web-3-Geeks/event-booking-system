@@ -238,7 +238,7 @@ npm test
 - [x] Task 10: API Documentation
 - [x] Task 11: Production Readiness
 - [x] Task 12: Final README
-- [ ] Task 13: Final Project Demonstration
+- [x] Task 13: Final Project Demonstration (`docs/DEMO-SCRIPT.md`)
 
 **Honest finding (Task 2/9):** data correctness held at every concurrency level tested, including 500 simultaneous requests against 100 seats (no overbooking, no negative seats, the core invariant always true). However, raw throughput degrades sharply at that extreme scale under real MongoDB transactions — 500 truly-simultaneous requests hammering a single document causes heavy write-conflict contention, and `session.withTransaction()`'s retry loop exhausts itself for most losing requests on a free/shared-tier Atlas cluster (they fail with `500`, not a clean `409`). Day 3's pre-transaction atomic-update approach handled the same 500-request scenario in 14s with 100% of possible bookings succeeding; the transaction-based approach took 134s and completed only 20%. This is a genuine, expected trade-off — transactions buy the crash-safety that was the Day 2/3 reviews' top priority, at a throughput cost under hot-document contention that would need a dedicated (non-shared) cluster, or a queue-based booking design, to fully resolve at flash-sale scale. At moderate concurrency (20-50 requests, closer to realistic traffic) the cost is small (5-14s) and acceptable. Full numbers in Notes.md.
 
@@ -329,6 +329,7 @@ backend/
 
 docs/
   CONCURRENCY-NOTES.md
+  DEMO-SCRIPT.md
   postman_collection.json
   postman_environment_railway.json
   screenshots/      # API test screenshots
