@@ -113,20 +113,6 @@ const createBooking = asyncHandler(async (req, res) => {
     }
   }
 
-  const event = await Event.findById(eventId);
-
-  if (!event) {
-    throw new ApiError(404, "Event not found");
-  }
-
-  if (event.status === "CANCELLED") {
-    throw new ApiError(400, "This event is cancelled");
-  }
-
-  if (new Date(event.endDate) <= new Date()) {
-    throw new ApiError(400, "This event has already ended");
-  }
-
   const session = await mongoose.startSession();
   let booking;
 
@@ -137,6 +123,8 @@ const createBooking = asyncHandler(async (req, res) => {
       const updateEvent = await Event.findOneAndUpdate(
         {
           _id: eventId,
+          status: { $in: ["UPCOMING", "ONGOING"] },
+          endDate: { $gt: new Date() },
           availableSeats: { $gte: quantity },
         },
         {
@@ -149,6 +137,20 @@ const createBooking = asyncHandler(async (req, res) => {
       );
 
       if (!updateEvent) {
+        const current = await Event.findById(eventId).session(session);
+
+        if (!current) {
+          throw new ApiError(404, "Event not found");
+        }
+
+        if (current.status === "CANCELLED") {
+          throw new ApiError(400, "This event is cancelled");
+        }
+
+        if (new Date(current.endDate) <= new Date()) {
+          throw new ApiError(400, "This event has already ended");
+        }
+
         logWarn("Booking rejected - not enough seats", { eventId, quantity });
         throw new ApiError(409, "Not enough seats available");
       }
@@ -278,6 +280,10 @@ const cancelBooking = asyncHandler(async (req, res) => {
     );
   }
 
+  if (booking.status === "CANCELLED") {
+    throw new ApiError(409, "Booking is already cancelled");
+  }
+
   if (!canTransitionBooking(booking.status, "CANCELLED")) {
     throw new ApiError(
       400,
@@ -297,7 +303,7 @@ const cancelBooking = asyncHandler(async (req, res) => {
       );
 
       if (!cancelledBooking) {
-        throw new ApiError(400, "Booking is already cancelled");
+        throw new ApiError(409, "Booking is already cancelled");
       }
 
       await Event.findByIdAndUpdate(

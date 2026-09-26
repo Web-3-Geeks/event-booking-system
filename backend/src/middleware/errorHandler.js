@@ -27,6 +27,16 @@ function errorHandler(err, req, res, next) {
     message = "Token expired, please login again";
   }
 
+  if (err.errorLabels && err.errorLabels.includes("TransientTransactionError")) {
+    statusCode = 409;
+    message = "Conflict updating seats, please retry";
+  }
+
+  if (err.name === "MongoServerError" && err.codeName === "ExceededTimeLimit") {
+    statusCode = 503;
+    message = "Server is busy, please retry shortly";
+  }
+
   if (err.code === 11000) {
     statusCode = 409;
     const field = Object.keys(err.keyValue || {})[0];
