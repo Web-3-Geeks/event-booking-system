@@ -1,0 +1,829 @@
+{
+  "info": {
+    "_postman_id": "15a9c4a6-ccef-44f5-828b-857e6276aad6",
+    "name": "Event-Booking-System-App",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "46357609"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Banner\",\"email\":\"banner.new@example.com\",\"password\":\"password123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Public. Creates a new user (always role=USER). Password is hashed before storage and never returned in the response."
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate email Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Ali\",\"email\":\"ali@example.com\",\"password\":\"password123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));\r\n\r\nconst res = pm.response.json();\r\nif (res.data && res.data.token) {\r\n    pm.environment.set(\"token\", res.data.token);\r\n    console.log(\"Token saved:\", res.data.token);\r\n}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"ali@example.com\",\"password\":\"password123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Public. Returns a JWT (valid for JWT_EXPIRES_IN). Same error for wrong email or wrong password (prevents user enumeration)."
+          },
+          "response": []
+        },
+        {
+          "name": "Login with wrong password ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\":\"ali@example.com\",\"password\":\"wrongpass\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Protected — requires Authorization: Bearer <token>. Returns the current user profile (no password)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Me without Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register Other User (for authorization test)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "",
+                  "const res = pm.response.json();",
+                  "if (res.data && res.data.token) {",
+                  "    pm.environment.set(\"otherToken\", res.data.token);",
+                  "    console.log(\"otherToken saved:\", res.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\":\"Other Test User\",\"email\":\"other-{{$randomInt}}@test.com\",\"password\":\"password123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "Protected. Supports pagination and filtering: ?page=1&limit=20&status=UPCOMING&location=Lahore&startDate=2026-01-01&endDate=2026-12-31"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"title\":\"Tech Conference 2026\",\"description\":\"A technology conference event\",\"location\":\"Lahore Expo Centre\",\"startDate\":\"2026-10-15T10:00:00.000Z\",\"endDate\":\"2026-10-15T17:00:00.000Z\",\"totalSeats\":200,\"price\":1500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ]
+            },
+            "description": "Protected, ADMIN only (403 for USER). availableSeats is always set equal to totalSeats server-side."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Protected. 404 if the event does not exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Tech Conference\",\n  \"description\": \"Updated event description\",\n  \"location\": \"Lahore Expo Centre\",\n  \"startDate\": \"2026-10-15T10:00:00.000Z\",\n  \"endDate\": \"2026-10-15T18:00:00.000Z\",\n  \"totalSeats\": 150,\n  \"price\": 2500,\n  \"status\": \"UPCOMING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Protected, ADMIN only. Partial update (PATCH) — only sent fields change. Status changes are validated against allowed transitions (e.g. UPCOMING can go to ONGOING or CANCELLED, but not directly to COMPLETED). totalSeats changes preserve already-booked seats atomically."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events/{{eventId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Protected, ADMIN only. Blocked with 409 if the event has any CONFIRMED bookings — cancel the event instead."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Events (Paginated + Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/events?page=1&limit=10&status=UPCOMING",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "UPCOMING"
+                }
+              ]
+            },
+            "description": "Example of pagination + filtering. Also supports location and startDate/endDate range filters. Response includes a pagination object: { page, limit, total, totalPages }."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Create Bookings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"eventId\":\"6ab1b04f5b72a1f47e11d78d\",\"quantity\":2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Protected. Seat deduction + booking creation run inside a MongoDB transaction (all-or-nothing). Optional Idempotency-Key header — see the Idempotency folder for behavior details. totalAmount is always calculated server-side (price x quantity), never trusted from the client."
+          },
+          "response": []
+        },
+        {
+          "name": "OverBookings",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"eventId\":\"6ab1b04f5b72a1f47e11d78d\",\"quantity\":201}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Demonstrates the 409 Conflict response when requested quantity exceeds availableSeats. No seats are deducted on failure."
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Quantity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"eventId\":\"6ab1b04f5b72a1f47e11d78d\",\"quantity\":0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Demonstrates 400 Bad Request for quantity <= 0 or non-integer quantity."
+          },
+          "response": []
+        },
+        {
+          "name": "All Bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Protected. Always scoped server-side to the authenticated user (req.user._id) — a user can never see another user's bookings, regardless of query params. Supports ?page=1&limit=20&status=CONFIRMED."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Booking",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/6ab2f0cfcbf3e0ce4daddcd9/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "6ab2f0cfcbf3e0ce4daddcd9",
+                "cancel"
+              ]
+            },
+            "description": "Protected. Status change + seat restoration run inside a MongoDB transaction. Blocked (400) once the event's startDate has passed. Only the booking owner can cancel."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Booking By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/6ab2f0cfcbf3e0ce4daddcd9",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "6ab2f0cfcbf3e0ce4daddcd9"
+              ]
+            },
+            "description": "Protected. 403 if the booking belongs to another user, 404 if it does not exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized Booking Access",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{otherToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/6ab2f0cfcbf3e0ce4daddcd9",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "6ab2f0cfcbf3e0ce4daddcd9"
+              ]
+            },
+            "description": "Demonstrates 403 when a different authenticated user tries to view a booking they do not own."
+          },
+          "response": []
+        },
+        {
+          "name": "Double Cancellation",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings/6ab2f0cfcbf3e0ce4daddcd9/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings",
+                "6ab2f0cfcbf3e0ce4daddcd9",
+                "cancel"
+              ]
+            },
+            "description": "Demonstrates that cancelling an already-CANCELLED booking is safely rejected (400) and does not restore seats a second time — verified this also holds under true concurrent load (see docs/CONCURRENCY-NOTES.md)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Bookings (Paginated + Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bookings?page=1&limit=10&status=CONFIRMED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "status",
+                  "value": "CONFIRMED"
+                }
+              ]
+            },
+            "description": "Example of pagination + filtering, always scoped to the authenticated user. Response includes a pagination object: { page, limit, total, totalPages }."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Idempotency",
+      "item": [
+        {
+          "name": "Create Booking with Idempotency Key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-key-{{$randomUUID}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Booking request with a unique Idempotency-Key header. A fresh key always creates a new booking (201)."
+          },
+          "response": []
+        },
+        {
+          "name": "Duplicate Idempotency Request (Same Data)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-fixed-key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Run this request TWICE (or more) in a row with the same fixed key and same body. Only one Booking document is ever created — every repeat returns the SAME booking id and 201, even if fired concurrently (verified with 20 truly concurrent requests, see Notes.md / README)."
+          },
+          "response": []
+        },
+        {
+          "name": "Idempotency Key Reused with Different Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "demo-fixed-key"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"quantity\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/bookings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bookings"
+              ]
+            },
+            "description": "Run this AFTER the request above, using the SAME key (demo-fixed-key) but a DIFFERENT quantity. Expected: 422 \"Idempotency key already used for a different request\" — the key is tied to the exact original request via a hash, so it cannot be reused for a different booking."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
